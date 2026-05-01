@@ -400,7 +400,25 @@ else:
 
 # Bước 3: Hiển thị lên giao diện
 st.markdown(f"""
-    <div class="stat-val">{auto_tf}<span style="font-size:14px;color:#94a3b8;">/10</span></div>
+<div class="hero-wrap">
+  <div class="hero-content">
+    <div>
+      <div class="hero-badge"><span class="dot"></span> AI POWERED · FUZZY LOGIC ENGINE</div>
+      <h1 class="hero-title">TNT SMARTFARE <span style="color:#f8fafc;"></span></h1>
+      <div class="hero-sub"><i class="fa-solid fa-shield-halved" style="color:#f5c842;"></i> &nbsp; Hệ thống định vị thông minh · Tính cước phí mờ thời gian thực</div>
+    </div>
+    <div class="hero-stats">
+      <div class="stat-item">
+        <div class="stat-val">{current_time}</div>
+        <div class="stat-lbl"><i class="fa-regular fa-clock"></i> Thời gian</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-val">{auto_tf}<span style="font-size:14px;color:#94a3b8;">/10</span></div>
+        <div class="stat-lbl"><i class="fa-solid fa-traffic-light"></i> Mật độ</div>
+      </div>
+    </div>
+  </div>
+</div>
 """, unsafe_allow_html=True)
 
 # ============================================================
