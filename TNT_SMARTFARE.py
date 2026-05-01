@@ -9,17 +9,21 @@ from skfuzzy import control as ctrl
 from geopy.geocoders import Nominatim
 from datetime import datetime
 import math
-import pytz
 from datetime import datetime
+import pytz
 
-# 1. Ép kiểu múi giờ Việt Nam
-vn_tz = pytz.timezone('Asia/Ho_Chi_Minh')
+# Hàm này giúp lấy giờ VN chính xác
+def get_vn_time():
+    utc_now = datetime.now(pytz.utc) # Lấy giờ chuẩn quốc tế trước
+    vietnam_tz = pytz.timezone('Asia/Ho_Chi_Minh') # Xác định múi giờ VN
+    return utc_now.astimezone(vietnam_tz) # Chuyển đổi sang giờ VN
 
-# 2. Lấy giờ hiện tại theo đúng múi giờ đó
-now_vn = datetime.now(vn_tz)
+# Khi hiển thị lên giao diện (đoạn trong hình của bạn)
+now = get_vn_time()
+time_string = now.strftime("%H:%M") 
 
-# 3. Gán vào biến hiển thị của bạn (Ví dụ biến time_display)
-time_display = now_vn.strftime("%H:%M")
+# Ngọc Thi hãy cập nhật biến này vào chỗ hiển thị 02:05 nhé
+# Ví dụ: st.write(f"{time_string}")
 
 # ============================================================
 # 1. CẤU HÌNH TRANG
