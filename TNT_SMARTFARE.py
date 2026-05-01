@@ -389,11 +389,19 @@ def get_ai_traffic():
     
     # ... các dòng tiếp theo giữ nguyên ...
 # Gọi hàm để lấy giá trị mật độ
-auto_tf = get_ai_traffic()
+# Bước 1: Gọi hàm và hứng lấy kết quả
+mat_do_thuc_te = get_ai_traffic()
 
-# Nếu auto_tf vẫn bị None, hãy thử đặt một giá trị mặc định để app không bị xấu:
-if auto_tf is None:
+# Bước 2: Kiểm tra nếu hàm bị lỗi trả về None thì gán đại một con số để app không lỗi
+if mat_do_thuc_te is None:
     auto_tf = 0.0
+else:
+    auto_tf = mat_do_thuc_te
+
+# Bước 3: Hiển thị lên giao diện
+st.markdown(f"""
+    <div class="stat-val">{auto_tf}<span style="font-size:14px;color:#94a3b8;">/10</span></div>
+""", unsafe_allow_html=True)
 
 # ============================================================
 # 5. SESSION STATE
