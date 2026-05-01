@@ -388,6 +388,12 @@ def get_ai_traffic():
     hour = now_vn.hour + now_vn.minute / 60.0
     
     # ... các dòng tiếp theo giữ nguyên ...
+# Gọi hàm để lấy giá trị mật độ
+auto_tf = get_ai_traffic()
+
+# Nếu auto_tf vẫn bị None, hãy thử đặt một giá trị mặc định để app không bị xấu:
+if auto_tf is None:
+    auto_tf = 0.0
 
 # ============================================================
 # 5. SESSION STATE
