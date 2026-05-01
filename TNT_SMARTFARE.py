@@ -9,7 +9,18 @@ from skfuzzy import control as ctrl
 from geopy.geocoders import Nominatim
 from datetime import datetime
 import math
+from datetime import datetime
+import pytz
 
+# 1. Xác định múi giờ Hồ Chí Minh
+vietnam_tz = pytz.timezone('Asia/Ho_Chi_Minh')
+
+# 2. Lấy giờ hiện tại và ép về múi giờ VN ngay lập tức
+now_vn = datetime.now(vietnam_tz)
+
+# 3. Sử dụng giờ đã ép để tính toán hoặc hiển thị
+hour = now_vn.hour + now_vn.minute / 60.0
+time_string = now_vn.strftime("%H:%M")
 # ============================================================
 # 1. CẤU HÌNH TRANG
 # ============================================================
