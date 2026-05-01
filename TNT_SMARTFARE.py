@@ -1,3 +1,4 @@
+# copy từ app5
 import streamlit as st
 from streamlit_folium import st_folium
 import folium
@@ -408,6 +409,10 @@ st.markdown(f"""
 # ============================================================
 # 7. LAYOUT CHÍNH
 # ============================================================
+# ============================================================
+# 7. LAYOUT CHÍNH
+# ============================================================
+if 'dist' not in locals(): dist = 0
 col_map, col_ctrl = st.columns([2.2, 1], gap="medium")
 
 with col_ctrl:
@@ -468,11 +473,10 @@ with col_ctrl:
             st.success("✅ Mã LUONGVE: Giảm 10%")
         elif promo_code != "":
             st.warning("⚠️ Mã không hợp lệ.")
-
 with col_map:
     st.markdown('<div class="panel-title"><i class="fa-solid fa-map-location-dot"></i> Bản đồ trực tiếp</div>', unsafe_allow_html=True)
-    st.markdown('<div class="map-wrap">', unsafe_allow_html=True)
-
+    
+    # Khởi tạo bản đồ
     m = folium.Map(
         location=st.session_state.start_coords,
         zoom_start=13,
@@ -480,56 +484,54 @@ with col_map:
         attr="Google Maps"
     )
 
-    folium.Marker(
-        st.session_state.start_coords,
-        tooltip="Điểm đón",
-        icon=folium.Icon(color='green', icon='play', prefix='fa'),
-        draggable=True
-    ).add_to(m)
-    folium.Marker(
-        st.session_state.end_coords,
-        tooltip="Điểm đến",
-        icon=folium.Icon(color='red', icon='flag-checkered', prefix='fa'),
-        draggable=True
-    ).add_to(m)
+    # Thêm Marker
+    folium.Marker(st.session_state.start_coords, tooltip="Điểm đón", icon=folium.Icon(color='green', icon='play', prefix='fa')).add_to(m)
+    folium.Marker(st.session_state.end_coords, tooltip="Điểm đến", icon=folium.Icon(color='red', icon='flag-checkered', prefix='fa')).add_to(m)
 
+    # TÍNH TOÁN LỘ TRÌNH VỚI GRAPHHOPPER
     dist = 0
-    p1, p2 = st.session_state.start_coords, st.session_state.end_coords
     try:
-        url = f"http://router.project-osrm.org/route/v1/driving/{p1[1]},{p1[0]};{p2[1]},{p2[0]}?overview=full&geometries=geojson"
-        res = requests.get(url, timeout=10).json()
-        if 'routes' in res and len(res['routes']) > 0:
-            route = res['routes'][0]
-            dist = route['distance'] / 1000
-            coords = [(p[1], p[0]) for p in route['geometry']['coordinates']]
-            folium.PolyLine(coords, color="#f5c842", weight=10, opacity=0.25).add_to(m)
-            folium.PolyLine(coords, color="#ffd86b", weight=4, opacity=0.95).add_to(m)
-            m.fit_bounds([p1, p2])
-    except Exception:
+        url = f"https://graphhopper.com/api/1/route?point={st.session_state.start_coords[0]},{st.session_state.start_coords[1]}&point={st.session_state.end_coords[0]},{st.session_state.end_coords[1]}&vehicle=car&locale=vi&points_encoded=false&key=79ebf81c-8a0b-4e39-8f89-f7805f154c98"
+        res = requests.get(url).json()
+        if "paths" in res:
+            dist = res["paths"][0]["distance"] / 1000
+            points = res["paths"][0]["points"]["coordinates"]
+            route_coords = [[p[1], p[0]] for p in points]
+            folium.PolyLine(route_coords, color="#3b82f6", weight=6, opacity=0.8).add_to(m)
+    except:
         pass
 
-    map_data = st_folium(m, height=540, width="100%", key="main_map")
+    # HIỂN THỊ BẢN ĐỒ (Quan trọng: width=None để nó tự fill khung CSS)
+    st.markdown('<div class="map-wrap">', unsafe_allow_html=True)
+    map_output = st_folium(m, height=500, width=None, key="tnt_map")
     st.markdown('</div>', unsafe_allow_html=True)
 
-    if map_data and map_data.get('last_object_clicked'):
-        new_c = [map_data['last_object_clicked']['lat'], map_data['last_object_clicked']['lng']]
-        if math.dist(new_c, st.session_state.start_coords) < math.dist(new_c, st.session_state.end_coords):
-            if new_c != st.session_state.start_coords:
-                st.session_state.start_coords = new_c
-                st.session_state.start_addr = get_address(new_c[0], new_c[1])
-                st.rerun()
-        else:
-            if new_c != st.session_state.end_coords:
-                st.session_state.end_coords = new_c
-                st.session_state.end_addr = get_address(new_c[0], new_c[1])
-                st.rerun()
+    # XỬ LÝ CLICK CHUỘT (Sửa lỗi loop)
+    if map_output and map_output.get('last_object_clicked'):
+        click_c = [map_output['last_object_clicked']['lat'], map_output['last_object_clicked']['lng']]
+        # Chỉ rerun nếu tọa độ click thực sự khác với tọa độ cũ
+        if click_c != st.session_state.start_coords and click_c != st.session_state.end_coords:
+            # Logic: Click gần điểm nào thì cập nhật điểm đó
+            d_start = math.dist(click_c, st.session_state.start_coords)
+            d_end = math.dist(click_c, st.session_state.end_coords)
+            if d_start < d_end:
+                st.session_state.start_coords = click_c
+                st.session_state.start_addr = get_address(click_c[0], click_c[1])
+            else:
+                st.session_state.end_coords = click_c
+                st.session_state.end_addr = get_address(click_c[0], click_c[1])
+            st.rerun()
 
 # ============================================================
 # 8. TÍNH GIÁ + RESULT CARD
 # ============================================================
+# --- ĐOẠN TÍNH TOÁN VÀ HIỂN THỊ KẾT QUẢ ---
 v = VEHICLES[st.session_state.vehicle]
+rain_val = st.session_state.get('rain_toggle', False)
+current_promo = st.session_state.get('promo', "")
+current_discount = 20000 if current_promo == "UEH" else 0
 
-if dist > 0:
+if 'dist' in locals() and dist > 0:
     sim.input['distance'] = min(dist, 50)
     sim.input['traffic'] = auto_tf
     sim.input['weather'] = 8 if is_raining else 2
@@ -541,15 +543,14 @@ if dist > 0:
     if promo_code == "LUONGVE":
         total *= 0.9
     else:
-        total -= discount_val
+        total -= current_discount
 
     final_price = max(0, round(total / 1000) * 1000)
     eta = max(1, int(dist * v['speed']))
-
-    weather_icon = "fa-cloud-showers-heavy" if is_raining else "fa-sun"
-    weather_text = "Mưa/Bão" if is_raining else "Trời tốt"
+    
+    weather_icon = "fa-cloud-showers-heavy" if rain_val else "fa-sun"
+    weather_text = "Mưa/Bão" if rain_val else "Trời tốt"
     promo_display = promo_code if promo_code else "Không có"
-
     st.markdown(f"""
     <div class="result-shell">
       <div class="result-grid">
