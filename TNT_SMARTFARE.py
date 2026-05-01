@@ -438,8 +438,8 @@ def get_smart_traffic(dist_km, start_coords, end_coords):
     from datetime import datetime
     import math
 
-    now = datetime.now()
-    hour = now.hour
+    now = datetime.now(VN_TZ)
+    hour = now.hour + now.minute / 60.0
     weekday = now.weekday()  # 0=Mon
 
     # =========================
@@ -538,18 +538,18 @@ except:
 # ============================================================
 # 6. HERO HEADER (ĐÃ FIX GIỜ VN)
 # ============================================================
-
+current_time = datetime.now(VN_TZ).strftime("%H:%M")
 auto_tf = get_smart_traffic(
     dist,
     st.session_state.start_coords,
     st.session_state.end_coords
 )
-current_time = datetime.now().strftime("%H:%M")
+current_time = datetime.now(VN_TZ).strftime("%H:%M")
 # Bước 2: AI tự động tính toán nhu cầu khách hàng theo giờ
 auto_demand = get_automated_demand()
 
 # Bước 3: Lấy thời gian hiện tại để hiển thị lên giao diện
-current_time = datetime.now().strftime("%H:%M")
+current_time = datetime.now(VN_TZ).strftime("%H:%M")
 
 # Bước 4: Nạp tất cả vào "Bộ não" Logic mờ để tính toán
 sim.input['traffic'] = auto_tf
