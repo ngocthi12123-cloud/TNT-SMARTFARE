@@ -89,7 +89,7 @@ st.markdown("""
 .hero-content { position: relative; z-index: 2; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px; }
 .hero-title {
     font-family: 'Playfair Display', serif;
-    font-size: 42px; font-weight: 900;
+    font-size: 26px; font-weight: 800;
     background: var(--gold-grad);
     -webkit-background-clip: text;
     background-clip: text;
