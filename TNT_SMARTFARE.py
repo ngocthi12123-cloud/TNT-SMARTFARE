@@ -9,18 +9,18 @@ from skfuzzy import control as ctrl
 from geopy.geocoders import Nominatim
 from datetime import datetime
 import math
-from datetime import datetime
-import pytz
+from datetime import datetime, timedelta
 
-# 1. Xác định múi giờ Hồ Chí Minh
-vietnam_tz = pytz.timezone('Asia/Ho_Chi_Minh')
+# Streamlit Cloud mặc định là giờ UTC (GMT+0)
+# Việt Nam là GMT+7, nên mình cộng thêm 7 tiếng
+now_utc = datetime.utcnow()
+now_vn = now_utc + timedelta(hours=7)
 
-# 2. Lấy giờ hiện tại và ép về múi giờ VN ngay lập tức
-now_vn = datetime.now(vietnam_tz)
-
-# 3. Sử dụng giờ đã ép để tính toán hoặc hiển thị
+# Lấy giờ và phút để hiển thị
 hour = now_vn.hour + now_vn.minute / 60.0
 time_string = now_vn.strftime("%H:%M")
+
+# Sau đó dùng time_string để hiển thị lên giao diện
 # ============================================================
 # 1. CẤU HÌNH TRANG
 # ============================================================
