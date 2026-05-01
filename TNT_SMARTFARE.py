@@ -9,6 +9,19 @@ from skfuzzy import control as ctrl
 from geopy.geocoders import Nominatim
 from datetime import datetime
 import math
+from datetime import datetime
+import pytz
+
+# 1. Định nghĩa múi giờ Việt Nam
+vietnam_tz = pytz.timezone('Asia/Ho_Chi_Minh')
+
+# 2. Lấy thời gian hiện tại theo múi giờ VN
+now_vn = datetime.now(vietnam_tz)
+
+# 3. Định dạng lại để hiển thị (ví dụ: 09:30 01/05/2026)
+time_display = now_vn.strftime("%H:%M %d/%m/%Y")
+
+st.write(f"🕒 Thời gian hiện tại (VN): {time_display}")
 
 # ============================================================
 # 1. CẤU HÌNH TRANG
