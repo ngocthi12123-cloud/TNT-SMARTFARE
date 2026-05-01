@@ -426,3 +426,203 @@ st.markdown(f"""
   </div>
 </div>
 """, unsafe_allow_html=True)
+# ============================================================
+# 7. LAYOUT CHÍNH
+# ============================================================
+if 'dist' not in locals(): dist = 0
+col_map, col_ctrl = st.columns([2.2, 1], gap="medium")
+
+with col_ctrl:
+    st.markdown('<div class="panel-title"><i class="fa-solid fa-route"></i> Lộ trình của bạn</div>', unsafe_allow_html=True)
+    with st.container(border=True):
+        s_input = st.text_input("📍 Điểm đón", value=st.session_state.start_addr, key="s_in")
+        e_input = st.text_input("🏁 Điểm đến", value=st.session_state.end_addr, key="e_in")
+
+        col_b1, col_b2 = st.columns(2)
+        with col_b1:
+            if st.button("Tìm địa chỉ", use_container_width=True, key="search_btn"):
+                try:
+                    l1 = geolocator.geocode(s_input)
+                    l2 = geolocator.geocode(e_input)
+                    if l1:
+                        st.session_state.start_coords = [l1.latitude, l1.longitude]
+                        st.session_state.start_addr = l1.address
+                    if l2:
+                        st.session_state.end_coords = [l2.latitude, l2.longitude]
+                        st.session_state.end_addr = l2.address
+                    st.rerun()
+                except Exception:
+                    st.warning("Không tìm được địa chỉ.")
+        with col_b2:
+            if st.button("Reset Map", use_container_width=True, type="secondary", key="reset_btn"):
+                st.session_state.start_coords = [10.7769, 106.7009]
+                st.session_state.end_coords = [10.8231, 106.6297]
+                st.rerun()
+
+    st.markdown('<div class="panel-title" style="margin-top:18px;"><i class="fa-solid fa-car-rear"></i> Chọn phương tiện</div>', unsafe_allow_html=True)
+    with st.container(border=True):
+        veh_keys = list(VEHICLES.keys())
+        idx = veh_keys.index(st.session_state.vehicle) if st.session_state.vehicle in veh_keys else 0
+        chosen = st.radio(
+            "Loại xe",
+            options=veh_keys,
+            format_func=lambda x: f"{VEHICLES[x]['name']} · {VEHICLES[x]['seats']}",
+            index=idx,
+            label_visibility="collapsed",
+            key="vehicle_radio"
+        )
+        st.session_state.vehicle = chosen
+
+        v_info = VEHICLES[chosen]
+        st.markdown(f'<div style="display:flex;align-items:center;gap:14px;padding:14px;background:rgba(245,200,66,0.08);border:1px solid rgba(245,200,66,0.3);border-radius:14px;margin-top:10px;"><div style="width:50px;height:50px;border-radius:12px;background:rgba(245,200,66,0.15);display:flex;align-items:center;justify-content:center;"><i class="fa-solid {v_info["icon"]}" style="font-size:24px;color:#ffd86b;"></i></div><div><div style="color:#ffd86b;font-weight:700;font-size:15px;">{v_info["name"]}</div><div style="color:#94a3b8;font-size:12px;">Mở cửa: {v_info["base"]:,}đ • Mỗi km: {v_info["km_rate"]:,}đ</div></div></div>', unsafe_allow_html=True)
+
+
+    st.markdown('<div class="panel-title" style="margin-top:18px;"><i class="fa-solid fa-sliders"></i> Tùy chọn & Ưu đãi</div>', unsafe_allow_html=True)
+    with st.container(border=True):
+        is_raining = st.toggle("🌧️ Đang có mưa/bão", value=False, key="rain_toggle")
+
+        promo_code = st.text_input("🎟️ Mã giảm giá", placeholder="Nhập mã giảm giá", key="promo").upper()
+        discount_val = 0
+        if promo_code == "UEH":
+            st.success("✅ Mã UEH: Giảm 20.000đ")
+            discount_val = 20000
+        elif promo_code == "LUONGVE":
+            st.success("✅ Mã LUONGVE: Giảm 10%")
+        elif promo_code != "":
+            st.warning("⚠️ Mã không hợp lệ.")
+with col_map:
+    st.markdown('<div class="panel-title"><i class="fa-solid fa-map-location-dot"></i> Bản đồ trực tiếp</div>', unsafe_allow_html=True)
+    
+    # Khởi tạo bản đồ
+    m = folium.Map(
+        location=st.session_state.start_coords,
+        zoom_start=13,
+        tiles="https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}",
+        attr="Google Maps"
+    )
+
+    # Thêm Marker
+    folium.Marker(st.session_state.start_coords, tooltip="Điểm đón", icon=folium.Icon(color='green', icon='play', prefix='fa')).add_to(m)
+    folium.Marker(st.session_state.end_coords, tooltip="Điểm đến", icon=folium.Icon(color='red', icon='flag-checkered', prefix='fa')).add_to(m)
+
+    # TÍNH TOÁN LỘ TRÌNH VỚI GRAPHHOPPER
+    dist = 0
+    try:
+        url = f"https://graphhopper.com/api/1/route?point={st.session_state.start_coords[0]},{st.session_state.start_coords[1]}&point={st.session_state.end_coords[0]},{st.session_state.end_coords[1]}&vehicle=car&locale=vi&points_encoded=false&key=79ebf81c-8a0b-4e39-8f89-f7805f154c98"
+        res = requests.get(url).json()
+        if "paths" in res:
+            dist = res["paths"][0]["distance"] / 1000
+            points = res["paths"][0]["points"]["coordinates"]
+            route_coords = [[p[1], p[0]] for p in points]
+            folium.PolyLine(route_coords, color="#3b82f6", weight=6, opacity=0.8).add_to(m)
+    except:
+        pass
+
+    # HIỂN THỊ BẢN ĐỒ (Quan trọng: width=None để nó tự fill khung CSS)
+    st.markdown('<div class="map-wrap">', unsafe_allow_html=True)
+    map_output = st_folium(m, height=500, width=None, key="tnt_map")
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    # XỬ LÝ CLICK CHUỘT (Sửa lỗi loop)
+    if map_output and map_output.get('last_object_clicked'):
+        click_c = [map_output['last_object_clicked']['lat'], map_output['last_object_clicked']['lng']]
+        # Chỉ rerun nếu tọa độ click thực sự khác với tọa độ cũ
+        if click_c != st.session_state.start_coords and click_c != st.session_state.end_coords:
+            # Logic: Click gần điểm nào thì cập nhật điểm đó
+            d_start = math.dist(click_c, st.session_state.start_coords)
+            d_end = math.dist(click_c, st.session_state.end_coords)
+            if d_start < d_end:
+                st.session_state.start_coords = click_c
+                st.session_state.start_addr = get_address(click_c[0], click_c[1])
+            else:
+                st.session_state.end_coords = click_c
+                st.session_state.end_addr = get_address(click_c[0], click_c[1])
+            st.rerun()
+
+# ============================================================
+# 8. TÍNH GIÁ + RESULT CARD
+# ============================================================
+# --- ĐOẠN TÍNH TOÁN VÀ HIỂN THỊ KẾT QUẢ ---
+v = VEHICLES[st.session_state.vehicle]
+rain_val = st.session_state.get('rain_toggle', False)
+current_promo = st.session_state.get('promo', "")
+current_discount = 20000 if current_promo == "UEH" else 0
+
+if 'dist' in locals() and dist > 0:
+    sim.input['distance'] = min(dist, 50)
+    sim.input['traffic'] = auto_tf
+    sim.input['weather'] = 8 if is_raining else 2
+    sim.compute()
+
+    surge = 1 + (sim.output['price'] / 100)
+    total = (v['base'] + dist * v['km_rate']) * surge
+
+    if promo_code == "LUONGVE":
+        total *= 0.9
+    else:
+        total -= current_discount
+
+    final_price = max(0, round(total / 1000) * 1000)
+    eta = max(1, int(dist * v['speed']))
+    
+    weather_icon = "fa-cloud-showers-heavy" if rain_val else "fa-sun"
+    weather_text = "Mưa/Bão" if rain_val else "Trời tốt"
+    promo_display = promo_code if promo_code else "Không có"
+    st.markdown(f"""
+    <div class="result-shell">
+      <div class="result-grid">
+        <div>
+          <span class="ai-pill"><i class="fa-solid fa-microchip"></i> AI ANALYSIS · MẬT ĐỘ {auto_tf}/10 · HỆ SỐ x{surge:.2f}</span>
+          <div class="price-label">Tổng cước phí dự kiến</div>
+          <div class="price-mega">{final_price:,}<span class="price-currency">VNĐ</span></div>
+        </div>
+      </div>
+      <div class="meta-row">
+        <div class="meta-item">
+          <div class="meta-icon"><i class="fa-solid {v['icon']}"></i></div>
+          <div class="meta-text"><div class="lbl">Phương tiện</div><div class="val">{v['name']}</div></div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-icon"><i class="fa-solid fa-route"></i></div>
+          <div class="meta-text"><div class="lbl">Quãng đường</div><div class="val">{dist:.1f} km</div></div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-icon"><i class="fa-regular fa-clock"></i></div>
+          <div class="meta-text"><div class="lbl">Thời gian</div><div class="val">{eta} phút</div></div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-icon"><i class="fa-solid {weather_icon}"></i></div>
+          <div class="meta-text"><div class="lbl">Thời tiết</div><div class="val">{weather_text}</div></div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-icon"><i class="fa-solid fa-ticket"></i></div>
+          <div class="meta-text"><div class="lbl">Mã ưu đãi</div><div class="val">{promo_display}</div></div>
+        </div>
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
+    st.markdown("""
+    <div style="text-align: center; margin-top: 20px;">
+        <button class="confirm-btn" style="width: 100%; justify-content: center;">
+            <i class="fa-solid fa-check-double"></i> XÁC NHẬN ĐẶT XE
+        </button>
+    </div>
+""", unsafe_allow_html=True)
+else:
+    st.markdown("""
+    <div class="empty-state">
+      <i class="fa-solid fa-location-crosshairs"></i>
+      <h3>Chào mừng đến với TNT SMARTFARE 💎</h3>
+      <p>Hãy kéo Marker trên bản đồ hoặc nhập địa chỉ điểm đón và điểm đến để bắt đầu tính cước phí thông minh.</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+# ============================================================
+# 9. FOOTER
+# ============================================================
+st.markdown("""
+<div style="text-align:center; margin-top:40px; padding:20px; color:#94a3b8; font-size:12px; letter-spacing:1px;">
+  <i class="fa-solid fa-gem" style="color:#f5c842;"></i>
+  &nbsp; TNT SMARTFARE · POWERED BY FUZZY LOGIC &nbsp;·&nbsp; © 2026
+</div>
+""", unsafe_allow_html=True)
