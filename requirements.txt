@@ -7,3 +7,4 @@ scipy
 scikit-fuzzy
 networkx
 geopy
+pytz
