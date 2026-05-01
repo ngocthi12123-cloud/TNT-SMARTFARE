@@ -1,4 +1,5 @@
 # copy từ app5
+# này dùng cho github
 import streamlit as st
 from streamlit_folium import st_folium
 import folium
@@ -9,18 +10,7 @@ from skfuzzy import control as ctrl
 from geopy.geocoders import Nominatim
 from datetime import datetime
 import math
-import datetime
 
-
-# Cách này không cần pytz, không cần requirements.txt
-# Streamlit Cloud luôn chạy giờ quốc tế (UTC), mình chỉ cần cộng thêm 7
-now = datetime.datetime.utcnow() + datetime.timedelta(hours=7)
-
-# Gán vào biến hiển thị của Ngọc Thi
-time_string = now.strftime("%H:%M")
-
-# Nếu trong hàm get_ai_traffic() có tính toán hour:
-hour = now.hour + now.minute / 60.0
 # ============================================================
 # 1. CẤU HÌNH TRANG
 # ============================================================
@@ -100,7 +90,7 @@ st.markdown("""
 .hero-content { position: relative; z-index: 2; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px; }
 .hero-title {
     font-family: 'Playfair Display', serif;
-    font-size: 26px; font-weight: 800;
+    font-size: 42px; font-weight: 900;
     background: var(--gold-grad);
     -webkit-background-clip: text;
     background-clip: text;
@@ -108,7 +98,7 @@ st.markdown("""
     margin: 0; letter-spacing: -1px;
     line-height: 1.1;
 }
-.hero-sub { font-size: 14px; color: var(--text-secondary); margin-top: 6px; letter-spacing: 0.5px; }
+.hero-sub { font-size: 14px; color: var(--text-secondary); margin-top: 8px; letter-spacing: 0.5px; }
 .hero-badge {
     display: inline-flex; align-items: center; gap: 8px;
     background: rgba(245, 200, 66, 0.12);
@@ -380,41 +370,10 @@ def get_address(lat, lon):
         return f"{lat:.4f}, {lon:.4f}"
 
 def get_ai_traffic():
-    # Cách này dùng thư viện gốc của Python, không bao giờ lỗi AttributeError
-    # Lấy giờ UTC rồi cộng 7 tiếng cho Việt Nam
-    now_vn = datetime.datetime.utcnow() + datetime.timedelta(hours=7)
-    
-    # Tính toán hour dựa trên giờ VN đã cộng
-    hour = now_vn.hour + now_vn.minute / 60.0
-    
-    # ... các dòng tiếp theo giữ nguyên ...
-# Gọi hàm để lấy giá trị mật độ
-# Bước 1: Gọi hàm và hứng lấy kết quả
-mat_do_thuc_te = get_ai_traffic()
-
-
-# Bước 3: Hiển thị lên giao diện
-st.markdown(f"""
-<div class="hero-wrap">
-  <div class="hero-content">
-    <div>
-      <div class="hero-badge"><span class="dot"></span> AI POWERED · FUZZY LOGIC ENGINE</div>
-      <h1 class="hero-title">TNT SMARTFARE <span style="color:#f8fafc;"></span></h1>
-      <div class="hero-sub"><i class="fa-solid fa-shield-halved" style="color:#f5c842;"></i> &nbsp; Hệ thống định vị thông minh · Tính cước phí mờ thời gian thực</div>
-    </div>
-    <div class="hero-stats">
-      <div class="stat-item">
-        <div class="stat-val">{current_time}</div>
-        <div class="stat-lbl"><i class="fa-regular fa-clock"></i> Thời gian</div>
-      </div>
-      <div class="stat-item">
-        <div class="stat-val">{auto_tf}<span style="font-size:14px;color:#94a3b8;">/10</span></div>
-        <div class="stat-lbl"><i class="fa-solid fa-traffic-light"></i> Mật độ</div>
-      </div>
-    </div>
-  </div>
-</div>
-""", unsafe_allow_html=True)
+    hour = datetime.now().hour + datetime.now().minute / 60.0
+    def peak(x, mu, sig): return math.exp(-pow(x - mu, 2) / (2 * pow(sig, 2)))
+    score = (9.5 * peak(hour, 7.5, 1.2) + 7.0 * peak(hour, 12.0, 1.0) + 10.0 * peak(hour, 18.0, 1.5))
+    return round(max(1.5, min(10.0, score)), 1)
 
 # ============================================================
 # 5. SESSION STATE
@@ -428,17 +387,8 @@ if 'vehicle' not in st.session_state: st.session_state.vehicle = "Luxury"
 # ============================================================
 # 6. HERO HEADER
 # ============================================================
-# Gọi hàm để lấy giá trị trước khi hiển thị
-auto_tf = get_ai_traffic() 
-
-# Sau đó mới tới đoạn st.markdown chứa dòng 424:
-st.markdown(f"""
-    <div class="stat-val">{auto_tf}<span style="font-size:14px;color:#94a3b8;">/10</span></div>
-""", unsafe_allow_html=True)
-# Thay cho dòng 404 và các dòng lấy thời gian khác
-# Cách viết datetime.datetime sẽ giúp Python không bị nhầm lẫn
-now_vn = datetime.datetime.utcnow() + datetime.timedelta(hours=7)
-current_time = now_vn.strftime("%H:%M")
+auto_tf = get_ai_traffic()
+current_time = datetime.now().strftime("%H:%M")
 
 st.markdown(f"""
 <div class="hero-wrap">
