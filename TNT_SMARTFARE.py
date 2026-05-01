@@ -379,10 +379,14 @@ def get_address(lat, lon):
         return f"{lat:.4f}, {lon:.4f}"
 
 def get_ai_traffic():
-    hour = datetime.now().hour + datetime.now().minute / 60.0
-    def peak(x, mu, sig): return math.exp(-pow(x - mu, 2) / (2 * pow(sig, 2)))
-    score = (9.5 * peak(hour, 7.5, 1.2) + 7.0 * peak(hour, 12.0, 1.0) + 10.0 * peak(hour, 18.0, 1.5))
-    return round(max(1.5, min(10.0, score)), 1)
+    # Cách này dùng thư viện gốc của Python, không bao giờ lỗi AttributeError
+    # Lấy giờ UTC rồi cộng 7 tiếng cho Việt Nam
+    now_vn = datetime.datetime.utcnow() + datetime.timedelta(hours=7)
+    
+    # Tính toán hour dựa trên giờ VN đã cộng
+    hour = now_vn.hour + now_vn.minute / 60.0
+    
+    # ... các dòng tiếp theo giữ nguyên ...
 
 # ============================================================
 # 5. SESSION STATE
