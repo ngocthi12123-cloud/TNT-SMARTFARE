@@ -9,16 +9,20 @@ from skfuzzy import control as ctrl
 from geopy.geocoders import Nominatim
 from datetime import datetime
 import math
-import datetime
+from datetime import datetime
 import pytz
 
-# Lấy giờ Việt Nam ngay tại chỗ hiển thị
-vn_time = datetime.datetime.now(pytz.timezone('Asia/Ho_Chi_Minh'))
-time_string = vn_time.strftime("%H:%M")
-
-# Sau đó bạn đưa biến time_string này vào phần st.markdown hoặc st.write của bạn
-# Ví dụ:
-# st.markdown(f"### {time_string}")
+def get_ai_traffic():
+    # 1. Ép múi giờ Việt Nam ngay trong hàm
+    vn_tz = pytz.timezone('Asia/Ho_Chi_Minh')
+    now_vn = datetime.now(vn_tz)
+    
+    # 2. Tính toán hour dựa trên giờ Việt Nam chính xác
+    # Cách viết này giúp tránh lỗi AttributeError
+    hour = now_vn.hour + now_vn.minute / 60.0
+    
+    # ... các phần logic fuzzy phía sau giữ nguyên ...
+    return simulation_result
 # ============================================================
 # 1. CẤU HÌNH TRANG
 # ============================================================
