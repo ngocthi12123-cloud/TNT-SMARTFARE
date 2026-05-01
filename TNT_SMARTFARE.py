@@ -9,18 +9,17 @@ from skfuzzy import control as ctrl
 from geopy.geocoders import Nominatim
 from datetime import datetime
 import math
-from datetime import datetime, timedelta
+import datetime
 
-# Streamlit Cloud mặc định là giờ UTC (GMT+0)
-# Việt Nam là GMT+7, nên mình cộng thêm 7 tiếng
-now_utc = datetime.utcnow()
-now_vn = now_utc + timedelta(hours=7)
+# Cách này không cần pytz, không cần requirements.txt
+# Streamlit Cloud luôn chạy giờ quốc tế (UTC), mình chỉ cần cộng thêm 7
+now = datetime.datetime.utcnow() + datetime.timedelta(hours=7)
 
-# Lấy giờ và phút để hiển thị
-hour = now_vn.hour + now_vn.minute / 60.0
-time_string = now_vn.strftime("%H:%M")
+# Gán vào biến hiển thị của Ngọc Thi
+time_string = now.strftime("%H:%M")
 
-# Sau đó dùng time_string để hiển thị lên giao diện
+# Nếu trong hàm get_ai_traffic() có tính toán hour:
+hour = now.hour + now.minute / 60.0
 # ============================================================
 # 1. CẤU HÌNH TRANG
 # ============================================================
