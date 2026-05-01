@@ -3,5 +3,6 @@ streamlit-folium
 folium
 requests
 numpy
+scipy
 scikit-fuzzy
 geopy
