@@ -6,6 +6,7 @@ import numpy as np
 import skfuzzy as fuzz
 from skfuzzy import control as ctrl
 from geopy.geocoders import Nominatim
+from geopy.distance import geodesic
 from datetime import datetime
 import math
 
@@ -20,109 +21,89 @@ st.set_page_config(
 )
 
 # ============================================================
-# 2. CSS PREMIUM DARK + MOBILE OPTIMIZATION
+# 2. CSS TỐI ƯU GIAO DIỆN (MOBILE & DESKTOP)
 # ============================================================
 st.markdown("""
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-
 <style>
-:root {
-    --navy-900: #060b1f; --navy-800: #0a1330; --navy-700: #111c44;
-    --gold: #f5c842; --gold-bright: #ffd86b; --text-primary: #f8fafc;
-    --glass: rgba(255, 255, 255, 0.06); --glass-border: rgba(255, 255, 255, 0.12);
-}
+    /* Tổng thể nền và font */
+    .stApp {
+        background: linear-gradient(180deg, #060b1f 0%, #0a1330 100%);
+        color: #f8fafc;
+    }
+    
+    /* Ẩn các thành phần thừa của Streamlit */
+    #MainMenu, footer, header, [data-testid="stHeader"] { visibility: hidden; display: none !important; }
+    .block-container { padding: 1rem !important; }
 
-/* ẨN CÁC THÀNH PHẦN THỪA CỦA STREAMLIT ĐỂ GIỐNG APP */
-#MainMenu, footer, header, [data-testid="stHeader"] { visibility: hidden; display: none !important; }
-.block-container { padding: 1rem 0.5rem !important; max-width: 1400px; }
+    /* Header sang trọng */
+    .header-box {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 15px;
+        padding: 15px;
+        margin-bottom: 20px;
+        text-align: center;
+    }
+    .header-title {
+        font-size: 24px;
+        font-weight: 800;
+        background: linear-gradient(135deg, #f5c842, #ffd86b);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
 
-.stApp {
-    background: radial-gradient(ellipse at top left, rgba(59, 130, 246, 0.18) 0%, transparent 45%),
-                linear-gradient(180deg, #060b1f 0%, #0a1330 100%);
-    color: var(--text-primary);
-    font-family: 'Plus Jakarta Sans', sans-serif;
-}
-
-/* TỐI ƯU NÚT BẤM CHO DI ĐỘNG */
-.stButton > button {
-    width: 100% !important;
-    height: 3.5rem !important;
-    background: linear-gradient(135deg, #f5c842 0%, #b8860b 100%) !important;
-    color: #060b1f !important;
-    border-radius: 14px !important;
-    font-weight: 800 !important;
-    border: none !important;
-}
-
-/* INPUT ĐEN TRÊN NỀN TRẮNG DỄ ĐỌC */
-.stTextInput input {
-    background: #ffffff !important;
-    color: #000000 !important;
-    border-radius: 12px !important;
-    padding: 12px !important;
-}
-
-/* HERO SECTION RESPONSIVE */
-.hero-wrap {
-    background: rgba(10, 19, 48, 0.8);
-    border: 1px solid var(--glass-border);
-    border-radius: 20px;
-    padding: 20px;
-    margin-bottom: 15px;
-}
-.hero-title {
-    font-family: 'Playfair Display', serif;
-    font-size: 28px;
-    background: linear-gradient(135deg, #f5c842, #ffd86b);
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-}
-
-/* KẾT QUẢ GIÁ TIỀN */
-.result-shell {
-    background: linear-gradient(135deg, rgba(10, 19, 48, 0.9), rgba(26, 38, 85, 0.9));
-    border-radius: 24px;
-    padding: 20px;
-    margin-top: 15px;
-    border-top: 2px solid var(--gold);
-}
-.price-mega { font-size: 38px !important; font-weight: 900; color: var(--gold-bright); }
-
-/* MOBILE BREAKPOINTS */
-@media (max-width: 640px) {
-    .hero-stats { gap: 10px; }
-    .stat-val { font-size: 18px; }
-    .map-wrap { height: 350px !important; }
-    .result-grid { grid-template-columns: 1fr !important; gap: 15px; text-align: center; }
-}
+    /* Ô nhập liệu dễ nhìn */
+    .stTextInput input, .stSelectbox div[data-baseweb="select"] {
+        background-color: #ffffff !important;
+        color: #000000 !important;
+        border-radius: 10px !important;
+    }
+    
+    /* Box kết quả tính tiền */
+    .result-card {
+        background: linear-gradient(135deg, #111c44 0%, #0a1330 100%);
+        border-top: 3px solid #f5c842;
+        border-radius: 20px;
+        padding: 20px;
+        margin-top: 20px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+    }
+    .price-text {
+        font-size: 40px;
+        font-weight: 900;
+        color: #ffd86b;
+        margin: 10px 0;
+    }
+    
+    /* Nút bấm vàng gold */
+    .stButton > button {
+        width: 100% !important;
+        background: linear-gradient(135deg, #f5c842 0%, #b8860b 100%) !important;
+        color: #060b1f !important;
+        font-weight: 800 !important;
+        border-radius: 12px !important;
+        height: 50px !important;
+        border: none !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
 # ============================================================
-# 3. DỮ LIỆU & LOGIC (GIỮ NGUYÊN)
+# 3. LOGIC TÍNH TOÁN (FUZZY LOGIC)
 # ============================================================
-VEHICLES = {
-    "Bike":      {"icon": "fa-bicycle",      "name": "Xe điện",  "seats": "1 chỗ",     "base": 10000, "km_rate": 4000,  "speed": 3.0},
-    "Motorbike": {"icon": "fa-motorcycle",   "name": "Xe máy",       "seats": "1 chỗ",     "base": 12000, "km_rate": 4000,  "speed": 2.5},
-    "Car4":      {"icon": "fa-car",          "name": "Ô tô 4 chỗ",   "seats": "4 chỗ",     "base": 25000, "km_rate": 11000, "speed": 2.8},
-    "Car7":      {"icon": "fa-van-shuttle",  "name": "Ô tô 7 chỗ",   "seats": "7 chỗ",     "base": 32000, "km_rate": 14000, "speed": 3.0},
-    "Luxury":    {"icon": "fa-car-side",     "name": "Luxury Car",   "seats": "4 chỗ VIP", "base": 30000, "km_rate": 13000, "speed": 2.5},
-    "SUV":       {"icon": "fa-truck-pickup", "name": "SUV cao cấp",  "seats": "5 chỗ",     "base": 35000, "km_rate": 15000, "speed": 2.6},
-}
-
 @st.cache_resource
 def init_fuzzy():
     distance = ctrl.Antecedent(np.arange(0, 51, 1), 'distance')
     traffic = ctrl.Antecedent(np.arange(0, 11, 1), 'traffic')
     weather = ctrl.Antecedent(np.arange(0, 11, 1), 'weather')
     price = ctrl.Consequent(np.arange(0, 101, 1), 'price')
+    
     distance.automf(3, names=['short', 'medium', 'long'])
     traffic.automf(3, names=['low', 'medium', 'high'])
     weather['good'] = fuzz.trimf(weather.universe, [0, 0, 5])
     weather['bad'] = fuzz.trimf(weather.universe, [5, 10, 10])
     price.automf(3, names=['low', 'medium', 'high'])
+    
     rules = [
         ctrl.Rule(traffic['high'] | weather['bad'], price['high']),
         ctrl.Rule(traffic['low'] & weather['good'], price['low']),
@@ -132,99 +113,76 @@ def init_fuzzy():
     return ctrl.ControlSystemSimulation(ctrl.ControlSystem(rules))
 
 sim = init_fuzzy()
-geolocator = Nominatim(user_agent="tnt_smartfare_mobile")
-
-def get_address(lat, lon):
-    try:
-        location = geolocator.reverse((lat, lon), timeout=10)
-        return location.address if location else f"{lat:.4f}, {lon:.4f}"
-    except: return f"{lat:.4f}, {lon:.4f}"
+VEHICLES = {
+    "Motorbike": {"name": "Xe máy", "base": 12000, "km_rate": 4000, "speed": 2.5},
+    "Car4": {"name": "Ô tô 4 chỗ", "base": 25000, "km_rate": 11000, "speed": 2.8},
+    "Car7": {"name": "Ô tô 7 chỗ", "base": 32000, "km_rate": 14000, "speed": 3.0}
+}
 
 def get_ai_traffic():
     hour = datetime.now().hour + datetime.now().minute / 60.0
-    def peak(x, mu, sig): return math.exp(-pow(x - mu, 2) / (2 * pow(sig, 2)))
-    score = (9.5 * peak(hour, 7.5, 1.2) + 7.0 * peak(hour, 12.0, 1.0) + 10.0 * peak(hour, 18.0, 1.5))
+    score = (9.5 * math.exp(-pow(hour - 7.5, 2) / 2.88) + 10.0 * math.exp(-pow(hour - 18.0, 2) / 4.5))
     return round(max(1.5, min(10.0, score)), 1)
 
 # ============================================================
-# 4. TRẠNG THÁI & HIỂN THỊ
+# 4. GIAO DIỆN HIỂN THỊ
 # ============================================================
-if 'start_coords' not in st.session_state: st.session_state.start_coords = [10.7769, 106.7009]
-if 'end_coords' not in st.session_state: st.session_state.end_coords = [10.8231, 106.6297]
-if 'start_addr' not in st.session_state: st.session_state.start_addr = "Quận 1, TP.HCM"
-if 'end_addr' not in st.session_state: st.session_state.end_addr = "Quận Tân Bình, TP.HCM"
-if 'vehicle' not in st.session_state: st.session_state.vehicle = "Car4"
+st.markdown('<div class="header-box"><div class="header-title">TNT SMARTFARE 💎</div></div>', unsafe_allow_html=True)
 
-auto_tf = get_ai_traffic()
-current_time = datetime.now().strftime("%H:%M")
+# Khởi tạo tọa độ mặc định (Quận 1 và Tân Bình)
+start_coords = [10.7769, 106.7009]
+end_coords = [10.8231, 106.6297]
 
-# HERO HEADER
-st.markdown(f"""
-<div class="hero-wrap">
-    <div class="hero-title">TNT SMARTFARE 💎</div>
-    <div style="display:flex; justify-content: space-between; margin-top:10px;">
-        <div style="color:#94a3b8; font-size:12px;">{current_time} • Mật độ: {auto_tf}/10</div>
-        <div style="color:#ffd86b; font-size:12px; font-weight:700;">AI ACTIVE</div>
-    </div>
-</div>
-""", unsafe_allow_html=True)
+col1, col2 = st.columns([1.2, 1], gap="medium")
 
-# Giao diện chính (Tự động chuyển cột trên Mobile)
-col_map, col_ctrl = st.columns([1.5, 1])
-
-with col_map:
-    st.markdown('<div class="map-wrap">', unsafe_allow_html=True)
-    m = folium.Map(location=st.session_state.start_coords, zoom_start=13, tiles="https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}", attr="Google")
-    folium.Marker(st.session_state.start_coords, icon=folium.Icon(color='green')).add_to(m)
-    folium.Marker(st.session_state.end_coords, icon=folium.Icon(color='red')).add_to(m)
+with col1:
+    m = folium.Map(location=start_coords, zoom_start=12, tiles="cartodbpositron")
+    folium.Marker(start_coords, tooltip="Điểm đón", icon=folium.Icon(color="green")).add_to(m)
+    folium.Marker(end_coords, tooltip="Điểm đến", icon=folium.Icon(color="red")).add_to(m)
     
+    # Tính khoảng cách
     dist = 0
     try:
-        url = f"http://router.project-osrm.org/route/v1/driving/{st.session_state.start_coords[1]},{st.session_state.start_coords[0]};{st.session_state.end_coords[1]},{st.session_state.end_coords[0]}?overview=full&geometries=geojson"
-        res = requests.get(url, timeout=5).json()
-        if 'routes' in res:
-            dist = res['routes'][0]['distance'] / 1000
-            coords = [(p[1], p[0]) for p in res['routes'][0]['geometry']['coordinates']]
-            folium.PolyLine(coords, color="#f5c842", weight=6).add_to(m)
-    except: pass
+        url = f"http://router.project-osrm.org/route/v1/driving/{start_coords[1]},{start_coords[0]};{end_coords[1]},{end_coords[0]}?overview=full"
+        res = requests.get(url, timeout=3).json()
+        dist = res['routes'][0]['distance'] / 1000
+    except:
+        dist = geodesic(start_coords, end_coords).km * 1.2 # Dự phòng nếu lỗi API bản đồ
 
-    map_data = st_folium(m, height=400, width="100%", key="mobile_map")
-    st.markdown('</div>', unsafe_allow_html=True)
+    st_folium(m, height=400, width="100%")
 
-with col_ctrl:
-    st.text_input("📍 Điểm đón", value=st.session_state.start_addr, key="s_in")
-    st.text_input("🏁 Điểm đến", value=st.session_state.end_addr, key="e_in")
-    
-    veh_choice = st.selectbox("Chọn xe", list(VEHICLES.keys()), 
-                             format_func=lambda x: f"{VEHICLES[x]['name']} ({VEHICLES[x]['seats']})")
-    st.session_state.vehicle = veh_choice
+with col2:
+    st.text_input("📍 Điểm đón", value="Quận 1, TP.HCM")
+    st.text_input("🏁 Điểm đến", value="Quận Tân Bình, TP.HCM")
+    veh_choice = st.selectbox("Chọn loại xe", list(VEHICLES.keys()), format_func=lambda x: VEHICLES[x]['name'])
     is_raining = st.toggle("🌧️ Trời mưa")
-
-# TÍNH GIÁ & HIỂN THỊ KẾT QUẢ
-v = VEHICLES[st.session_state.vehicle]
-if dist > 0:
+    
+    # TÍNH GIÁ
+    v = VEHICLES[veh_choice]
+    traffic_score = get_ai_traffic()
+    
     sim.input['distance'] = min(dist, 50)
-    sim.input['traffic'] = auto_tf
+    sim.input['traffic'] = traffic_score
     sim.input['weather'] = 8 if is_raining else 2
     sim.compute()
-    surge = 1 + (sim.output['price'] / 100)
-    final_price = max(0, round(((v['base'] + dist * v['km_rate']) * surge) / 1000) * 1000)
     
+    surge = 1 + (sim.output['price'] / 100)
+    price = round(((v['base'] + dist * v['km_rate']) * surge) / 1000) * 1000
+    
+    # BOX HIỂN THỊ KẾT QUẢ
     st.markdown(f"""
-    <div class="result-shell">
-        <div class="result-grid">
-            <div>
-                <div style="color:#94a3b8; font-size:14px;">Giá dự kiến (x{surge:.2f})</div>
-                <div class="price-mega">{final_price:,} <span style="font-size:20px;">VNĐ</span></div>
-            </div>
-            <button class="stButton" style="margin-top:10px;">XÁC NHẬN ĐẶT XE</button>
-        </div>
-        <div style="display:flex; justify-content:space-between; margin-top:15px; color:#cbd5e1; font-size:12px;">
-            <span><i class="fa-solid fa-route"></i> {dist:.1f} km</span>
-            <span><i class="fa-regular fa-clock"></i> {max(1, int(dist * v['speed']))} phút</span>
-            <span><i class="fa-solid fa-car"></i> {v['name']}</span>
+    <div class="result-card">
+        <div style="font-size:14px; color:#94a3b8;">Giá dự kiến (Hệ số x{surge:.2f})</div>
+        <div class="price-text">{price:,} VNĐ</div>
+        <div style="display:flex; justify-content:space-between; margin-bottom:15px;">
+            <span> quãng đường: <b>{dist:.1f} km</b></span>
+            <span> thời gian: <b>{int(dist * v['speed'])} phút</b></span>
         </div>
     </div>
     """, unsafe_allow_html=True)
+    
+    if st.button("XÁC NHẬN ĐẶT XE"):
+        st.balloons()
+        st.success("Đã gửi yêu cầu đặt xe!")
 
-st.markdown("<br><center style='color:#666; font-size:10px;'>TNT SMARTFARE v2.0 Mobile Optimized</center>", unsafe_allow_html=True)
+st.markdown("<br><center style='color:#444; font-size:10px;'>TNT SMARTFARE v3.0 - UEH LOGISTICS PROJECT</center>", unsafe_allow_html=True)
