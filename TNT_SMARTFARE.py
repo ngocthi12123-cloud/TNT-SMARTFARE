@@ -11,6 +11,7 @@ from datetime import datetime
 import math
 import datetime
 
+
 # Cách này không cần pytz, không cần requirements.txt
 # Streamlit Cloud luôn chạy giờ quốc tế (UTC), mình chỉ cần cộng thêm 7
 now = datetime.datetime.utcnow() + datetime.timedelta(hours=7)
@@ -400,8 +401,11 @@ if 'vehicle' not in st.session_state: st.session_state.vehicle = "Luxury"
 # ============================================================
 # 6. HERO HEADER
 # ============================================================
-auto_tf = get_ai_traffic()
-current_time = datetime.now().strftime("%H:%M")
+
+# Thay cho dòng 404 và các dòng lấy thời gian khác
+# Cách viết datetime.datetime sẽ giúp Python không bị nhầm lẫn
+now_vn = datetime.datetime.utcnow() + datetime.timedelta(hours=7)
+current_time = now_vn.strftime("%H:%M")
 
 st.markdown(f"""
 <div class="hero-wrap">
