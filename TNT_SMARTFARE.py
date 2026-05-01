@@ -333,38 +333,91 @@ iframe { border-radius: 20px !important; }
 # 3. DỮ LIỆU XE (GIỮ NGUYÊN)
 # ============================================================
 VEHICLES = {
-    "Bike":      {"icon": "fa-bicycle",      "name": "Xe điện",  "seats": "1 chỗ",     "base": 10000, "km_rate": 4000,  "speed": 3.0},
     "Motorbike": {"icon": "fa-motorcycle",   "name": "Xe máy",       "seats": "1 chỗ",     "base": 12000, "km_rate": 4000,  "speed": 2.5},
     "Car4":      {"icon": "fa-car",          "name": "Ô tô 4 chỗ",   "seats": "4 chỗ",     "base": 25000, "km_rate": 11000, "speed": 2.8},
     "Car7":      {"icon": "fa-van-shuttle",  "name": "Ô tô 7 chỗ",   "seats": "7 chỗ",     "base": 32000, "km_rate": 14000, "speed": 3.0},
     "Luxury":    {"icon": "fa-car-side",     "name": "Luxury Car",   "seats": "4 chỗ VIP", "base": 30000, "km_rate": 13000, "speed": 2.5},
-    "SUV":       {"icon": "fa-truck-pickup", "name": "SUV cao cấp",  "seats": "5 chỗ",     "base": 35000, "km_rate": 15000, "speed": 2.6},
+    
 }
+if 'vehicle' not in st.session_state:
+    st.session_state.vehicle = "Motorbike"
+def get_automated_demand():
+    now = datetime.now()
+    hour = now.hour
+    minute = now.minute
+    time_float = hour + minute / 60.0
+    weekday = now.weekday()  # 0 là Thứ 2, 6 là Chủ nhật
 
+    # 1. Giả lập Nhu cầu cơ bản theo giờ (Sử dụng hàm hình chuông - Bell Curve)
+    # Cao điểm sáng (7h30) và chiều (17h30)
+    morning_peak = 9.0 * np.exp(-((time_float - 7.5)**2) / (2 * 1.5**2))
+    evening_peak = 9.5 * np.exp(-((time_float - 17.5)**2) / (2 * 2.0**2))
+    
+    demand_score = max(morning_peak, evening_peak)
+
+    # 2. Điều chỉnh theo ngày trong tuần
+    if weekday >= 5:  # Cuối tuần nhu cầu đi chơi dàn trải hơn
+        demand_score = max(demand_score, 7.0 if 10 <= hour <= 21 else 3.0)
+    
+    # 3. Thêm một chút biến động ngẫu nhiên (Random nhẹ) 
+    # Giả lập việc đôi khi có một nhóm sinh viên tan học sớm hoặc sự kiện
+    noise = np.random.uniform(-0.5, 0.5)
+    
+    # Đảm bảo kết quả nằm trong khoảng [1, 10]
+    final_demand = round(max(1.0, min(10.0, demand_score + noise)), 1)
+    return final_demand
 
 # ============================================================
 # 4. FUZZY LOGIC + AI TRAFFIC (ĐÃ FIX GIỜ VN)
 # ============================================================
-
 @st.cache_resource
 def init_fuzzy():
     distance = ctrl.Antecedent(np.arange(0, 51, 1), 'distance')
     traffic = ctrl.Antecedent(np.arange(0, 11, 1), 'traffic')
     weather = ctrl.Antecedent(np.arange(0, 11, 1), 'weather')
     price = ctrl.Consequent(np.arange(0, 101, 1), 'price')
+    demand = ctrl.Antecedent(np.arange(0, 11, 1), 'demand')
 
     distance.automf(3, names=['short', 'medium', 'long'])
     traffic.automf(3, names=['low', 'medium', 'high'])
     weather['good'] = fuzz.trimf(weather.universe, [0, 0, 5])
     weather['bad'] = fuzz.trimf(weather.universe, [5, 10, 10])
     price.automf(3, names=['low', 'medium', 'high'])
+    demand['low'] = fuzz.trapmf(demand.universe, [0, 0, 2, 4])
+    demand['medium'] = fuzz.trimf(demand.universe, [3, 5, 7])
+    demand['high'] = fuzz.trapmf(demand.universe, [6, 8, 10, 10])
 
     rules = [
-        ctrl.Rule(traffic['high'] | weather['bad'], price['high']),
-        ctrl.Rule(traffic['low'] & weather['good'], price['low']),
-        ctrl.Rule(distance['medium'] & traffic['medium'], price['medium']),
-        ctrl.Rule(distance['long'], price['high'])
-    ]
+    # Nhóm 1: Ưu tiên giảm giá khi Nhu cầu thấp (Bất kể kẹt xe hay không)
+    ctrl.Rule(demand['low'] & (traffic['low'] | traffic['medium']), price['low']),
+    ctrl.Rule(demand['low'] & traffic['high'], price['medium']),
+    
+    # Nhóm 2: Nhu cầu trung bình (Giá ổn định)
+    ctrl.Rule(demand['medium'] & traffic['low'], price['low']),
+    ctrl.Rule(demand['medium'] & traffic['medium'], price['medium']),
+    ctrl.Rule(demand['medium'] & traffic['high'], price['high']),
+    
+    # Nhóm 3: Nhu cầu cao (Tăng giá mạnh - Giờ cao điểm)
+    ctrl.Rule(demand['high'] & traffic['low'], price['medium']),
+    ctrl.Rule(demand['high'] & (traffic['medium'] | traffic['high']), price['high']),
+    
+    # Nhóm 4: Trường hợp đặc biệt (Mưa + Nhu cầu cao = Giá cực cao)
+    ctrl.Rule(weather['bad'] & demand['high'], price['high']),
+    # Nhóm 5: Sự kết hợp giữa Thời tiết và Giao thông (Cực kỳ quan trọng)
+    # Trời mưa + Đường kẹt = Giá cao nhất (để gọi tài xế ra đường)
+    ctrl.Rule(weather['bad'] & traffic['high'], price['high']),
+    
+    # Trời mưa + Nhu cầu trung bình = Giá vẫn nên cao
+    ctrl.Rule(weather['bad'] & demand['medium'], price['high']),
+    
+    # Nhóm 6: Bảo vệ giá khi đường cực vắng
+    # Nếu đường rất vắng và nhu cầu cũng thấp thì chắc chắn giá phải rẻ nhất
+    ctrl.Rule(traffic['low'] & demand['low'], price['low']),
+    
+    # Nhóm 7: Luật bù trừ
+    # Nếu đường kẹt nhưng nhu cầu cực thấp (ví dụ đêm khuya), giá chỉ nên ở mức trung bình
+    ctrl.Rule(traffic['high'] & demand['low'], price['medium'])
+]
     return ctrl.ControlSystemSimulation(ctrl.ControlSystem(rules))
 
 sim = init_fuzzy()
@@ -373,20 +426,96 @@ geolocator = Nominatim(user_agent="tnt_grab_pro_v6")
 # ============================================================
 # FIX: AI TRAFFIC THEO GIỜ VIỆT NAM
 # ============================================================
-def get_ai_traffic():
-    now = datetime.now(VN_TZ)
-    hour = now.hour + now.minute / 60.0
+def get_address(lat, lon):
+    try:
+        location = geolocator.reverse((lat, lon), timeout=10)
+        return location.address if location else f"{lat:.4f}, {lon:.4f}"
+    except Exception:
+        return f"{lat:.4f}, {lon:.4f}"
 
-    def peak(x, mu, sig):
-        return math.exp(-((x - mu) ** 2) / (2 * (sig ** 2)))
+def get_smart_traffic(dist_km, start_coords, end_coords):
+    import random
+    from datetime import datetime
+    import math
 
-    score = (
-        9.5 * peak(hour, 7.5, 1.2) +
-        7.0 * peak(hour, 12.0, 1.0) +
-        10.0 * peak(hour, 18.0, 1.5)
-    )
+    now = datetime.now()
+    hour = now.hour
+    weekday = now.weekday()  # 0=Mon
 
-    return round(max(1.5, min(10.0, score)), 1)
+    # =========================
+    # 1. BASE THEO GIỜ
+    # =========================
+    # =========================
+    # 1. BASE THEO GIỜ (Cập nhật mới)
+    # =========================
+    if 7 <= hour <= 9:
+        base = 7.5
+    elif 11 <= hour <= 13:
+        base = 5.5
+    elif 14 <= hour <= 16:
+        base = 4.0
+    elif 17 <= hour <= 19:
+        base = 8.0 # Cao điểm gắt
+    elif 19 < hour <= 21:
+        base = 6.3
+    elif 22 <= hour or hour <= 4:
+        base = 1.5
+    else:
+        base = 4.5
+
+    # =========================
+    # 2. THEO NGÀY
+    # =========================
+    if weekday >= 5:  # cuối tuần
+        if 9 <= hour <= 21:
+            base += 1.0
+        else:
+            base -= 0.5
+
+    
+    # =========================
+    # 3. THEO KHOẢNG CÁCH (Chỉnh lại: Khoảng cách xa không nên làm tăng mật độ)
+    # =========================
+    # Mật độ giao thông thường phụ thuộc vào địa điểm hơn là tổng quãng đường.
+    # Nên giảm bớt trọng số này.
+    if dist_km > 15:
+        base += 0.5 
+    elif dist_km < 2:
+        base -= 0.5
+
+    # =========================
+    # 4. HIỆU ỨNG TRUNG TÂM TP (Quận 1) - Tối ưu lại
+    # =========================
+    center = (10.7769, 106.7009)
+    def calc_distance(a, b):
+        return math.sqrt((a[0]-b[0])**2 + (a[1]-b[1])**2)
+
+    d_start = calc_distance(start_coords, center)
+    d_end = calc_distance(end_coords, center)
+
+    # Thay vì cộng 0.7, hãy dùng hệ số để giá trị không bị vọt quá cao
+    if d_start < 0.05 or d_end < 0.05:
+        # Giới hạn: Nếu đã là giờ cao điểm (7.5) thì chỉ tăng nhẹ
+        if base >= 7.0:
+            base += 0.3 
+        else:
+            base += 0.7
+
+    # =========================
+    # 5. THỜI TIẾT
+    # =========================
+    if st.session_state.get("rain_toggle", False):
+        base += 1.5
+
+    # =========================
+    # 6. RANDOM THÔNG MINH
+    # =========================
+    noise = random.uniform(-0.8, 0.8)
+
+    traffic = base + noise
+
+    return round(min(10, max(1, traffic)), 1)
+
 
 # ============================================================
 # 5. SESSION (GIỮ NGUYÊN)
@@ -397,13 +526,55 @@ if 'end_coords' not in st.session_state: st.session_state.end_coords = [10.8231,
 if 'start_addr' not in st.session_state: st.session_state.start_addr = "Quận 1, TP.HCM"
 if 'end_addr' not in st.session_state: st.session_state.end_addr = "Quận Tân Bình, TP.HCM"
 if 'vehicle' not in st.session_state: st.session_state.vehicle = "Luxury"
-
+dist = 0
+try:
+    # Key API GraphHopper của bạn
+    url = f"https://graphhopper.com/api/1/route?point={st.session_state.start_coords[0]},{st.session_state.start_coords[1]}&point={st.session_state.end_coords[0]},{st.session_state.end_coords[1]}&vehicle=car&key=79ebf81c-8a0b-4e39-8f89-f7805f154c98"
+    res = requests.get(url).json()
+    if "paths" in res:
+        dist = res["paths"][0]["distance"] / 1000 # Đổi sang km
+except:
+    dist = 0 # Nếu lỗi thì mặc định là 0
 # ============================================================
 # 6. HERO HEADER (ĐÃ FIX GIỜ VN)
 # ============================================================
 
-auto_tf = get_ai_traffic()
-current_time = datetime.now(VN_TZ).strftime("%H:%M")
+auto_tf = get_smart_traffic(
+    dist,
+    st.session_state.start_coords,
+    st.session_state.end_coords
+)
+current_time = datetime.now().strftime("%H:%M")
+# Bước 2: AI tự động tính toán nhu cầu khách hàng theo giờ
+auto_demand = get_automated_demand()
+
+# Bước 3: Lấy thời gian hiện tại để hiển thị lên giao diện
+current_time = datetime.now().strftime("%H:%M")
+
+# Bước 4: Nạp tất cả vào "Bộ não" Logic mờ để tính toán
+sim.input['traffic'] = auto_tf
+sim.input['demand'] = auto_demand
+# Nếu bạn có nút check mưa, hãy thay True/False vào đây
+sim.input['weather'] = 8 if st.session_state.get('is_raining', False) else 2
+
+sim.compute()
+
+# Bước 5: Tính toán hệ số biến động giá (Surge)
+# 0.7 là mức tối thiểu (Giảm giá 30% khi vắng khách)
+surge = 0.8 + (sim.output['price'] / 120)
+surge = min(1.5, surge)
+sim.compute()
+v = VEHICLES[st.session_state.vehicle]
+    # Công thức chuẩn giống Grab
+if dist <= 2:
+    total = v['base']
+else:
+    total = v['base'] + (dist - 2) * v['km_rate']
+
+# Áp dụng surge
+    total *= surge
+# làm tròn đẹp
+final_price = max(0, round(total / 1000) * 1000)
 
 st.markdown(f"""
 <div class="hero-wrap">
@@ -507,15 +678,17 @@ with col_map:
 
     # TÍNH TOÁN LỘ TRÌNH VỚI GRAPHHOPPER
     dist = 0
+    p1, p2 = st.session_state.start_coords, st.session_state.end_coords
     try:
-        url = f"https://graphhopper.com/api/1/route?point={st.session_state.start_coords[0]},{st.session_state.start_coords[1]}&point={st.session_state.end_coords[0]},{st.session_state.end_coords[1]}&vehicle=car&locale=vi&points_encoded=false&key=79ebf81c-8a0b-4e39-8f89-f7805f154c98"
-        res = requests.get(url).json()
-        if "paths" in res:
-            dist = res["paths"][0]["distance"] / 1000
-            points = res["paths"][0]["points"]["coordinates"]
-            route_coords = [[p[1], p[0]] for p in points]
-            folium.PolyLine(route_coords, color="#3b82f6", weight=6, opacity=0.8).add_to(m)
-    except:
+        url = f"http://router.project-osrm.org/route/v1/driving/{p1[1]},{p1[0]};{p2[1]},{p2[0]}?overview=full&geometries=geojson"
+        res = requests.get(url, timeout=10).json()
+        if 'routes' in res and len(res['routes']) > 0:
+            route = res['routes'][0]
+            dist = route['distance'] / 1000
+            coords = [(p[1], p[0]) for p in route['geometry']['coordinates']]
+            folium.PolyLine(coords, color="#ffd86b", weight=4, opacity=0.95).add_to(m)
+            m.fit_bounds([p1, p2])
+    except Exception:
         pass
 
     # HIỂN THỊ BẢN ĐỒ (Quan trọng: width=None để nó tự fill khung CSS)
@@ -524,49 +697,54 @@ with col_map:
     st.markdown('</div>', unsafe_allow_html=True)
 
     # XỬ LÝ CLICK CHUỘT (Sửa lỗi loop)
-    if map_output and map_output.get('last_object_clicked'):
-        click_c = [map_output['last_object_clicked']['lat'], map_output['last_object_clicked']['lng']]
-        # Chỉ rerun nếu tọa độ click thực sự khác với tọa độ cũ
-        if click_c != st.session_state.start_coords and click_c != st.session_state.end_coords:
-            # Logic: Click gần điểm nào thì cập nhật điểm đó
-            d_start = math.dist(click_c, st.session_state.start_coords)
-            d_end = math.dist(click_c, st.session_state.end_coords)
-            if d_start < d_end:
-                st.session_state.start_coords = click_c
-                st.session_state.start_addr = get_address(click_c[0], click_c[1])
-            else:
-                st.session_state.end_coords = click_c
-                st.session_state.end_addr = get_address(click_c[0], click_c[1])
-            st.rerun()
+def get_address(lat, lon):
+    try:
+        # Thêm country_codes để giới hạn phạm vi tìm kiếm tại Việt Nam
+        location = geolocator.reverse((lat, lon), timeout=10, language='vi')
+        return location.address if location else f"{lat:.4f}, {lon:.4f}"
+    except Exception:
+        return f"{lat:.4f}, {lon:.4f}"
 
+# 2. KIỂM TRA CLICK CHUỘT THÔNG MINH (TRÁNH RERUN VÔ TẬN)
+if map_output and map_output.get('last_object_clicked'):
+    click_c = [map_output['last_object_clicked']['lat'], map_output['last_object_clicked']['lng']]
+    
+    # Tính khoảng cách Euclidean đơn giản để xem người dùng có thực sự muốn đổi điểm không
+    d_start = math.sqrt((click_c[0]-st.session_state.start_coords[0])**2 + (click_c[1]-st.session_state.start_coords[1])**2)
+    d_end = math.sqrt((click_c[0]-st.session_state.end_coords[0])**2 + (click_c[1]-st.session_state.end_coords[1])**2)
+    
+    threshold = 0.0001 # Một khoảng cách rất nhỏ
+    if d_start > threshold and d_end > threshold:
+        if d_start < d_end:
+            st.session_state.start_coords = click_c
+            st.session_state.start_addr = get_address(click_c[0], click_c[1])
+        else:
+            st.session_state.end_coords = click_c
+            st.session_state.end_addr = get_address(click_c[0], click_c[1])
+        st.rerun()
 # ============================================================
 # 8. TÍNH GIÁ + RESULT CARD
 # ============================================================
 # --- ĐOẠN TÍNH TOÁN VÀ HIỂN THỊ KẾT QUẢ ---
-v = VEHICLES[st.session_state.vehicle]
-rain_val = st.session_state.get('rain_toggle', False)
-current_promo = st.session_state.get('promo', "")
-current_discount = 20000 if current_promo == "UEH" else 0
-
-if 'dist' in locals() and dist > 0:
-    sim.input['distance'] = min(dist, 50)
-    sim.input['traffic'] = auto_tf
-    sim.input['weather'] = 8 if is_raining else 2
-    sim.compute()
-
-    surge = 1 + (sim.output['price'] / 100)
-    total = (v['base'] + dist * v['km_rate']) * surge
-
+if dist > 0:
+    base_fare = v['base'] if dist <= 2 else v['base'] + (dist - 2) * v['km_rate']
+    # Surge chuẩn từ 1.0 đến 1.8 tùy vào kết quả AI
+    ai_surge = 1.0 + (sim.output['price'] / 100) * 0.8 
+    
+    total = base_fare * ai_surge
+    current_discount = st.session_state.get('discount_value', 0)
+    # Áp dụng mã giảm giá cuối cùng
     if promo_code == "LUONGVE":
         total *= 0.9
     else:
         total -= current_discount
 
+
     final_price = max(0, round(total / 1000) * 1000)
     eta = max(1, int(dist * v['speed']))
     
-    weather_icon = "fa-cloud-showers-heavy" if rain_val else "fa-sun"
-    weather_text = "Mưa/Bão" if rain_val else "Trời tốt"
+    weather_icon = "fa-cloud-showers-heavy" if is_raining else "fa-sun"
+    weather_text = "Mưa/Bão" if is_raining else "Trời tốt"
     promo_display = promo_code if promo_code else "Không có"
     st.markdown(f"""
     <div class="result-shell">
