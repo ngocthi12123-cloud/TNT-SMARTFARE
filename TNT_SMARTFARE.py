@@ -9,14 +9,7 @@ from skfuzzy import control as ctrl
 from geopy.geocoders import Nominatim
 from datetime import datetime
 import math
-import pytz
-from datetime import datetime
 
-# Cách lấy giờ "tươi" nhất ngay tại dòng hiển thị
-hien_tai = datetime.now(pytz.timezone('Asia/Ho_Chi_Minh')).strftime("%H:%M")
-
-# Khi dán vào HTML/Markdown, dùng trực tiếp biến hien_tai
-# Ví dụ: <div class="time">{hien_tai}</div>
 # ============================================================
 # 1. CẤU HÌNH TRANG
 # ============================================================
@@ -257,7 +250,9 @@ st.markdown("""
     text-transform: uppercase;
 }
 
-.price-label { color: var(--text-muted); font-size: 13px; margin-top: 14px; letter-spacing: 0.5px;}
+.price-label { color: var(--text-muted); font-size: 13px; margin-top: 14px; letter-spacing: 0.5px;text-align: center; /* THÊM DÒNG NÀY */
+    width: 100%;        /* THÊM DÒNG NÀY */}
+
 .price-mega {
     font-family: 'Playfair Display', serif;
     font-size: 56px; font-weight: 900;
@@ -266,6 +261,9 @@ st.markdown("""
     -webkit-text-fill-color: transparent;
     line-height: 1.1; letter-spacing: -2px;
     margin-top: 4px;
+    text-align: center; /* THÊM DÒNG NÀY */
+    width: 100%;        /* THÊM DÒNG NÀY */
+    display: block;
 }
 .price-currency { font-size: 22px; color: var(--gold); font-weight: 700; margin-left: 6px; }
 
@@ -566,9 +564,6 @@ if 'dist' in locals() and dist > 0:
           <div class="price-label">Tổng cước phí dự kiến</div>
           <div class="price-mega">{final_price:,}<span class="price-currency">VNĐ</span></div>
         </div>
-        <div>
-          <button class="confirm-btn"><i class="fa-solid fa-check-double"></i> XÁC NHẬN ĐẶT XE</button>
-        </div>
       </div>
       <div class="meta-row">
         <div class="meta-item">
@@ -594,6 +589,13 @@ if 'dist' in locals() and dist > 0:
       </div>
     </div>
     """, unsafe_allow_html=True)
+    st.markdown("""
+    <div style="text-align: center; margin-top: 20px;">
+        <button class="confirm-btn" style="width: 100%; justify-content: center;">
+            <i class="fa-solid fa-check-double"></i> XÁC NHẬN ĐẶT XE
+        </button>
+    </div>
+""", unsafe_allow_html=True)
 else:
     st.markdown("""
     <div class="empty-state">
