@@ -401,7 +401,13 @@ if 'vehicle' not in st.session_state: st.session_state.vehicle = "Luxury"
 # ============================================================
 # 6. HERO HEADER
 # ============================================================
+# Gọi hàm để lấy giá trị trước khi hiển thị
+auto_tf = get_ai_traffic() 
 
+# Sau đó mới tới đoạn st.markdown chứa dòng 424:
+st.markdown(f"""
+    <div class="stat-val">{auto_tf}<span style="font-size:14px;color:#94a3b8;">/10</span></div>
+""", unsafe_allow_html=True)
 # Thay cho dòng 404 và các dòng lấy thời gian khác
 # Cách viết datetime.datetime sẽ giúp Python không bị nhầm lẫn
 now_vn = datetime.datetime.utcnow() + datetime.timedelta(hours=7)
